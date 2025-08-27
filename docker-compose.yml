@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: change_me_strong
+      POSTGRES_DB: zabbix
+    volumes:
+      - zbx_db:/var/lib/postgresql/data
+
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:7.2-alpine-latest
+    depends_on: [db]
+    restart: unless-stopped
+    environment:
+      DB_SERVER_HOST: db
+      DB_SERVER_PORT: "5432"
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: change_me_strong
+      POSTGRES_DB: zabbix
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "10051:10051"
+    volumes:
+      - zbx_srv:/var/lib/zabbix
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:7.2-alpine-latest
+    depends_on: [zabbix-server]
+    restart: unless-stopped
+    environment:
+      DB_SERVER_HOST: db
+      DB_SERVER_PORT: "5432"
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: change_me_strong
+      POSTGRES_DB: zabbix
+      ZBX_SERVER_HOST: zabbix-server
+      ZBX_SERVER_PORT: "10051"
+      PHP_TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "8080:8080"  
+      - "8443:8443"  
+
+  zabbix-agent2:
+    image: zabbix/zabbix-agent2:alpine-7.2-latest
+    restart: unless-stopped
+    environment:
+      ZBX_SERVER_HOST: zabbix-server
+      ZBX_SERVER_PORT: "10051"
+      ZBX_HOSTNAME: "${HOSTNAME:-zbx-agent2}"
+      TZ: Asia/Ho_Chi_Minh
+
+volumes:
+  zbx_db:
+  zbx_srv:
